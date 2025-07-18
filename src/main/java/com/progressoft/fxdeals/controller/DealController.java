@@ -15,10 +15,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * REST Controller for FX Deal operations
- * Simplified version without OpenAPI annotations for testing
- */
 @RestController
 @RequestMapping("/api/v1/deals")
 public class DealController {
@@ -47,8 +43,7 @@ public class DealController {
     
     @GetMapping("/{dealUniqueId}")
     public ResponseEntity<DealResponseDTO> getDeal(@PathVariable String dealUniqueId) {
-        
-        logger.debug("Fetching deal with unique ID: {}", dealUniqueId);
+        logger.info("Fetching deal with unique ID: {}", dealUniqueId);
         
         return dealService.getDealByUniqueId(dealUniqueId)
                 .map(deal -> ResponseEntity.ok(deal))
@@ -57,8 +52,7 @@ public class DealController {
     
     @GetMapping
     public ResponseEntity<List<DealResponseDTO>> getAllDeals() {
-        logger.debug("Fetching all deals");
-        
+        logger.info("Fetching all deals");
         List<DealResponseDTO> deals = dealService.getAllDeals();
         return ResponseEntity.ok(deals);
     }
@@ -68,9 +62,20 @@ public class DealController {
             @RequestParam String fromCurrency,
             @RequestParam String toCurrency) {
         
-        logger.debug("Fetching deals for currency pair: {} -> {}", fromCurrency, toCurrency);
+        logger.info("Fetching deals for currency pair: {} -> {}", fromCurrency, toCurrency);
         
         List<DealResponseDTO> deals = dealService.getDealsByCurrencyPair(fromCurrency, toCurrency);
+        return ResponseEntity.ok(deals);
+    }
+    
+    @GetMapping("/search/time-range")
+    public ResponseEntity<List<DealResponseDTO>> getDealsInTimeRange(
+            @RequestParam LocalDateTime startTime,
+            @RequestParam LocalDateTime endTime) {
+        
+        logger.info("Fetching deals between {} and {}", startTime, endTime);
+        
+        List<DealResponseDTO> deals = dealService.getDealsInTimeRange(startTime, endTime);
         return ResponseEntity.ok(deals);
     }
     
@@ -78,35 +83,28 @@ public class DealController {
     public ResponseEntity<List<DealResponseDTO>> getRecentDeals(
             @RequestParam(defaultValue = "10") int limit) {
         
-        logger.debug("Fetching {} most recent deals", limit);
+        logger.info("Fetching {} most recent deals", limit);
         
         List<DealResponseDTO> deals = dealService.getRecentDeals(limit);
         return ResponseEntity.ok(deals);
     }
     
     @GetMapping("/stats/count")
-    public ResponseEntity<Map<String, Long>> getTotalDealsCount() {
-        logger.debug("Fetching total deals count");
-        
+    public ResponseEntity<Map<String, Long>> getTotalCount() {
+        logger.info("Getting total count of deals");
         long count = dealService.getTotalDealsCount();
-        return ResponseEntity.ok(Map.of("totalDeals", count));
+        return ResponseEntity.ok(Map.of("totalCount", count));
     }
     
     @GetMapping("/exists/{dealUniqueId}")
     public ResponseEntity<Map<String, Boolean>> checkDealExists(@PathVariable String dealUniqueId) {
-        
-        logger.debug("Checking existence of deal with unique ID: {}", dealUniqueId);
-        
+        logger.info("Checking if deal exists with ID: {}", dealUniqueId);
         boolean exists = dealService.dealExists(dealUniqueId);
         return ResponseEntity.ok(Map.of("exists", exists));
     }
     
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
-        return ResponseEntity.ok(Map.of(
-            "status", "UP",
-            "service", "FX Deals Data Warehouse",
-            "timestamp", LocalDateTime.now().toString()
-        ));
+        return ResponseEntity.ok(Map.of("status", "UP", "service", "FX Deals API"));
     }
 } 

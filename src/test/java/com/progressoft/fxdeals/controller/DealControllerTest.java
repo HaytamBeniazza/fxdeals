@@ -73,7 +73,7 @@ class DealControllerTest {
         when(dealService.submitDeal(any(DealRequestDTO.class))).thenReturn(dealResponse);
 
         // When & Then
-        mockMvc.perform(post("/api/deals")
+        mockMvc.perform(post("/api/v1/deals")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validDealRequest)))
                 .andExpect(status().isCreated())
@@ -95,11 +95,11 @@ class DealControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/api/deals")
+        mockMvc.perform(post("/api/v1/deals")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("FIELD_VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
     }
 
     @Test
@@ -109,11 +109,11 @@ class DealControllerTest {
             .thenThrow(new DuplicateDealException("DEAL-001"));
 
         // When & Then
-        mockMvc.perform(post("/api/deals")
+        mockMvc.perform(post("/api/v1/deals")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validDealRequest)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("DUPLICATE_DEAL"))
+                .andExpect(jsonPath("$.error").value("DUPLICATE_DEAL"))
                 .andExpect(jsonPath("$.message").value(containsString("DEAL-001")));
     }
 
@@ -124,11 +124,11 @@ class DealControllerTest {
             .thenThrow(new DealValidationException("Invalid currency code"));
 
         // When & Then
-        mockMvc.perform(post("/api/deals")
+        mockMvc.perform(post("/api/v1/deals")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validDealRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.message").value(containsString("Invalid currency")));
     }
 
@@ -138,7 +138,7 @@ class DealControllerTest {
         when(dealService.getDealByUniqueId("DEAL-001")).thenReturn(Optional.of(dealResponse));
 
         // When & Then
-        mockMvc.perform(get("/api/deals/DEAL-001"))
+        mockMvc.perform(get("/api/v1/deals/DEAL-001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dealUniqueId").value("DEAL-001"))
                 .andExpect(jsonPath("$.fromCurrency").value("USD"))
@@ -151,7 +151,7 @@ class DealControllerTest {
         when(dealService.getDealByUniqueId("NON-EXISTENT")).thenReturn(Optional.empty());
 
         // When & Then
-        mockMvc.perform(get("/api/deals/NON-EXISTENT"))
+        mockMvc.perform(get("/api/v1/deals/NON-EXISTENT"))
                 .andExpect(status().isNotFound());
     }
 
@@ -162,7 +162,7 @@ class DealControllerTest {
         when(dealService.getAllDeals()).thenReturn(deals);
 
         // When & Then
-        mockMvc.perform(get("/api/deals"))
+        mockMvc.perform(get("/api/v1/deals"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].dealUniqueId").value("DEAL-001"));
@@ -172,18 +172,18 @@ class DealControllerTest {
     void shouldGetDealsByTimeRangeSuccessfully() throws Exception {
         // Given
         List<DealResponseDTO> deals = List.of(dealResponse);
-        when(dealService.getDealsByTimeRange(any(), any())).thenReturn(deals);
+        when(dealService.getDealsInTimeRange(any(), any())).thenReturn(deals);
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String startTime = testTimestamp.minusHours(1).format(formatter);
-        String endTime = testTimestamp.plusHours(1).format(formatter);
+        // Use ISO 8601 format for LocalDateTime parameters
+        String startTime = testTimestamp.minusHours(1).toString();
+        String endTime = testTimestamp.plusHours(1).toString();
 
         // When & Then
-        mockMvc.perform(get("/api/deals/search/time-range")
+        mockMvc.perform(get("/api/v1/deals/search/time-range")
                 .param("startTime", startTime)
                 .param("endTime", endTime))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].dealUniqueId").value("DEAL-001"));
     }
 
@@ -197,7 +197,7 @@ class DealControllerTest {
         when(dealService.getDealsByCurrencyPair("USD", "EUR")).thenReturn(deals);
 
         // When & Then
-        mockMvc.perform(get("/api/deals/search/currency-pair")
+        mockMvc.perform(get("/api/v1/deals/search/currency-pair")
                 .param("fromCurrency", "USD")
                 .param("toCurrency", "EUR"))
                 .andExpect(status().isOk())
@@ -212,7 +212,7 @@ class DealControllerTest {
         when(dealService.getRecentDeals(10)).thenReturn(deals);
 
         // When & Then
-        mockMvc.perform(get("/api/deals/recent")
+        mockMvc.perform(get("/api/v1/deals/recent")
                 .param("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
@@ -226,7 +226,7 @@ class DealControllerTest {
         when(dealService.getRecentDeals(10)).thenReturn(deals); // Default limit is 10
 
         // When & Then
-        mockMvc.perform(get("/api/deals/recent"))
+        mockMvc.perform(get("/api/v1/deals/recent"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
@@ -234,12 +234,12 @@ class DealControllerTest {
     @Test
     void shouldGetTotalDealsCountSuccessfully() throws Exception {
         // Given
-        when(dealService.getTotalDealsCount()).thenReturn(5L);
+        when(dealService.getTotalDealsCount()).thenReturn(100L);
 
         // When & Then
-        mockMvc.perform(get("/api/deals/stats/count"))
+        mockMvc.perform(get("/api/v1/deals/stats/count"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalDeals").value(5));
+                .andExpect(jsonPath("$.totalCount").value(100));
     }
 
     @Test
@@ -248,7 +248,7 @@ class DealControllerTest {
         when(dealService.dealExists("DEAL-001")).thenReturn(true);
 
         // When & Then
-        mockMvc.perform(get("/api/deals/exists/DEAL-001"))
+        mockMvc.perform(get("/api/v1/deals/exists/DEAL-001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.exists").value(true));
     }
@@ -256,10 +256,10 @@ class DealControllerTest {
     @Test
     void shouldReturnHealthCheckSuccessfully() throws Exception {
         // When & Then
-        mockMvc.perform(get("/api/deals/health"))
+        mockMvc.perform(get("/api/v1/deals/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"))
-                .andExpect(jsonPath("$.service").value("FX Deals Data Warehouse"));
+                .andExpect(jsonPath("$.service").value("FX Deals API"));
     }
 
     @Test
@@ -274,11 +274,11 @@ class DealControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/api/deals")
+        mockMvc.perform(post("/api/v1/deals")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("FIELD_VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.fieldErrors").exists());
     }
 
@@ -294,11 +294,11 @@ class DealControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/api/deals")
+        mockMvc.perform(post("/api/v1/deals")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("FIELD_VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
     }
 
     @Test
@@ -313,10 +313,10 @@ class DealControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/api/deals")
+        mockMvc.perform(post("/api/v1/deals")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("FIELD_VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
     }
 } 

@@ -197,7 +197,7 @@ class DealServiceTest {
         when(dealRepository.findDealsByTimestampRange(any(), any())).thenReturn(deals);
 
         // When
-        List<DealResponseDTO> result = dealService.getDealsByTimeRange(startTime, endTime);
+        List<DealResponseDTO> result = dealService.getDealsInTimeRange(startTime, endTime);
 
         // Then
         assertThat(result).hasSize(1);
@@ -212,7 +212,7 @@ class DealServiceTest {
         LocalDateTime endTime = LocalDateTime.now().minusHours(1); // End before start
 
         // When & Then
-        assertThatThrownBy(() -> dealService.getDealsByTimeRange(startTime, endTime))
+        assertThatThrownBy(() -> dealService.getDealsInTimeRange(startTime, endTime))
             .isInstanceOf(DealValidationException.class)
             .hasMessageContaining("Start time cannot be after end time");
     }
@@ -258,7 +258,7 @@ class DealServiceTest {
     @Test
     void shouldGetTotalDealsCountSuccessfully() {
         // Given
-        when(dealRepository.countTotalDeals()).thenReturn(5L);
+        when(dealRepository.count()).thenReturn(5L);
 
         // When
         long result = dealService.getTotalDealsCount();
@@ -266,7 +266,7 @@ class DealServiceTest {
         // Then
         assertThat(result).isEqualTo(5L);
         
-        verify(dealRepository).countTotalDeals();
+        verify(dealRepository).count();
     }
 
     @Test

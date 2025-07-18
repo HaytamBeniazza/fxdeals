@@ -13,17 +13,11 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Global exception handler for the FX Deals application
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     
-    /**
-     * Handle duplicate deal exceptions
-     */
     @ExceptionHandler(DuplicateDealException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateDeal(DuplicateDealException ex) {
         logger.warn("Duplicate deal submission attempt: {}", ex.getMessage());
@@ -37,12 +31,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
     
-    /**
-     * Handle validation exceptions
-     */
     @ExceptionHandler(DealValidationException.class)
     public ResponseEntity<ErrorResponse> handleDealValidation(DealValidationException ex) {
-        logger.error("Deal validation failed: {}", ex.getMessage());
+        logger.warn("Deal validation error: {}", ex.getMessage());
         
         ErrorResponse errorResponse = new ErrorResponse(
             "VALIDATION_ERROR",
@@ -53,12 +44,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
     
-    /**
-     * Handle Spring validation errors
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ValidationErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
-        logger.error("Request validation failed: {}", ex.getMessage());
+    public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        logger.warn("Request validation failed: {}", ex.getMessage());
         
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
@@ -67,25 +55,21 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         
-        ValidationErrorResponse errorResponse = new ValidationErrorResponse(
-            "FIELD_VALIDATION_ERROR",
-            "Request validation failed",
-            LocalDateTime.now(),
-            errors
-        );
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "VALIDATION_FAILED");
+        response.put("message", "Request validation failed");
+        response.put("timestamp", LocalDateTime.now());
+        response.put("fieldErrors", errors);
         
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
     
-    /**
-     * Handle generic exceptions
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         logger.error("Unexpected error occurred: {}", ex.getMessage(), ex);
         
         ErrorResponse errorResponse = new ErrorResponse(
-            "INTERNAL_ERROR",
+            "INTERNAL_SERVER_ERROR",
             "An unexpected error occurred. Please try again later.",
             LocalDateTime.now()
         );
@@ -93,43 +77,39 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
     
-    /**
-     * Standard error response structure
-     */
     public static class ErrorResponse {
-        private String code;
+        private String error;
         private String message;
         private LocalDateTime timestamp;
         
-        public ErrorResponse(String code, String message, LocalDateTime timestamp) {
-            this.code = code;
+        public ErrorResponse(String error, String message, LocalDateTime timestamp) {
+            this.error = error;
             this.message = message;
             this.timestamp = timestamp;
         }
         
-        // Getters and setters
-        public String getCode() { return code; }
-        public void setCode(String code) { this.code = code; }
-        
-        public String getMessage() { return message; }
-        public void setMessage(String message) { this.message = message; }
-        
-        public LocalDateTime getTimestamp() { return timestamp; }
-        public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
-    }
-    
-    /**
-     * Validation error response with field details
-     */
-    public static class ValidationErrorResponse extends ErrorResponse {
-        private Map<String, String> fieldErrors;
-        
-        public ValidationErrorResponse(String code, String message, LocalDateTime timestamp, Map<String, String> fieldErrors) {
-            super(code, message, timestamp);
-            this.fieldErrors = fieldErrors;
+        public String getError() {
+            return error;
         }
         
-        public Map<String, String> getFieldErrors() { return fieldErrors; }
-        public void setFieldErrors(Map<String, String> fieldErrors) { this.fieldErrors = fieldErrors; }
+        public void setError(String error) {
+            this.error = error;
+        }
+        
+        public String getMessage() {
+            return message;
+        }
+        
+        public void setMessage(String message) {
+            this.message = message;
+        }
+        
+        public LocalDateTime getTimestamp() {
+            return timestamp;
+        }
+        
+        public void setTimestamp(LocalDateTime timestamp) {
+            this.timestamp = timestamp;
+        }
     }
 } 

@@ -136,7 +136,7 @@ class DealRepositoryTest {
         dealRepository.saveAll(List.of(testDeal1, testDeal2, testDeal3));
         
         // When
-        Long count = dealRepository.countTotalDeals();
+        Long count = dealRepository.count();
         
         // Then
         assertThat(count).isEqualTo(3);
@@ -187,7 +187,7 @@ class DealRepositoryTest {
     void shouldHandleEmptyRepository() {
         // When
         List<Deal> allDeals = dealRepository.findAll();
-        Long count = dealRepository.countTotalDeals();
+        Long count = dealRepository.count();
         List<Deal> recentDeals = dealRepository.findRecentDeals(10);
         
         // Then

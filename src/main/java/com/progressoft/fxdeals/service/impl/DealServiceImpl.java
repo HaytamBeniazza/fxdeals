@@ -19,9 +19,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Implementation of Deal service with business logic
- */
 @Service
 @Transactional
 public class DealServiceImpl implements DealService {
@@ -39,24 +36,18 @@ public class DealServiceImpl implements DealService {
     public DealResponseDTO submitDeal(DealRequestDTO dealRequest) {
         logger.info("Submitting new deal with ID: {}", dealRequest.getDealUniqueId());
         
-        // Validate the deal request
         validateDealRequest(dealRequest);
         
-        // Check for duplicates
         if (dealRepository.existsByDealUniqueId(dealRequest.getDealUniqueId())) {
             throw new DuplicateDealException(dealRequest.getDealUniqueId());
         }
         
-        // Convert DTO to Entity
         Deal deal = convertToEntity(dealRequest);
-        
-        // Save the deal
         Deal savedDeal = dealRepository.save(deal);
         
         logger.info("Successfully saved deal with ID: {} and database ID: {}", 
                    savedDeal.getDealUniqueId(), savedDeal.getId());
         
-        // Convert back to DTO and return
         return convertToResponseDTO(savedDeal);
     }
     
@@ -71,6 +62,12 @@ public class DealServiceImpl implements DealService {
     
     @Override
     @Transactional(readOnly = true)
+    public Optional<Deal> getDealEntityByUniqueId(String dealUniqueId) {
+        return dealRepository.findByDealUniqueId(dealUniqueId);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
     public List<DealResponseDTO> getAllDeals() {
         logger.debug("Fetching all deals");
         
@@ -81,7 +78,16 @@ public class DealServiceImpl implements DealService {
     
     @Override
     @Transactional(readOnly = true)
-    public List<DealResponseDTO> getDealsByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
+    public Optional<DealResponseDTO> getDealById(Long id) {
+        logger.debug("Fetching deal with ID: {}", id);
+        
+        return dealRepository.findById(id)
+                .map(this::convertToResponseDTO);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<DealResponseDTO> getDealsInTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
         logger.debug("Fetching deals between {} and {}", startTime, endTime);
         
         if (startTime.isAfter(endTime)) {
@@ -98,13 +104,8 @@ public class DealServiceImpl implements DealService {
     public List<DealResponseDTO> getDealsByCurrencyPair(String fromCurrency, String toCurrency) {
         logger.debug("Fetching deals for currency pair: {} -> {}", fromCurrency, toCurrency);
         
-        String fromCurrencyUpper = fromCurrency.toUpperCase();
-        String toCurrencyUpper = toCurrency.toUpperCase();
-        
-        validateCurrencyCode(fromCurrencyUpper);
-        validateCurrencyCode(toCurrencyUpper);
-        
-        return dealRepository.findDealsByCurrencyPair(fromCurrencyUpper, toCurrencyUpper).stream()
+        return dealRepository.findDealsByCurrencyPair(
+                fromCurrency.toUpperCase(), toCurrency.toUpperCase()).stream()
                 .map(this::convertToResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -126,41 +127,59 @@ public class DealServiceImpl implements DealService {
     @Override
     @Transactional(readOnly = true)
     public long getTotalDealsCount() {
-        return dealRepository.countTotalDeals();
+        logger.debug("Getting total count of deals");
+        return dealRepository.count();
     }
     
     @Override
     @Transactional(readOnly = true)
     public boolean dealExists(String dealUniqueId) {
+        logger.debug("Checking if deal exists with ID: {}", dealUniqueId);
         return dealRepository.existsByDealUniqueId(dealUniqueId);
     }
     
-    /**
-     * Validate deal request data
-     */
     private void validateDealRequest(DealRequestDTO dealRequest) {
-        // Validate currency codes
-        validateCurrencyCode(dealRequest.getFromCurrency());
-        validateCurrencyCode(dealRequest.getToCurrency());
+        if (dealRequest == null) {
+            throw new DealValidationException("Deal request cannot be null");
+        }
         
-        // Validate that currencies are different
+        if (dealRequest.getDealUniqueId() == null || dealRequest.getDealUniqueId().trim().isEmpty()) {
+            throw new DealValidationException("Deal unique ID is required");
+        }
+        
+        if (dealRequest.getFromCurrency() == null || dealRequest.getFromCurrency().trim().isEmpty()) {
+            throw new DealValidationException("From currency is required");
+        }
+        
+        if (dealRequest.getToCurrency() == null || dealRequest.getToCurrency().trim().isEmpty()) {
+            throw new DealValidationException("To currency is required");
+        }
+        
+        if (dealRequest.getDealTimestamp() == null) {
+            throw new DealValidationException("Deal timestamp is required");
+        }
+        
+        if (dealRequest.getDealAmount() == null) {
+            throw new DealValidationException("Deal amount is required");
+        }
+        
+        validateCurrency(dealRequest.getFromCurrency());
+        validateCurrency(dealRequest.getToCurrency());
+        
         if (dealRequest.getFromCurrency().equalsIgnoreCase(dealRequest.getToCurrency())) {
             throw new DealValidationException("From currency and to currency cannot be the same");
         }
         
-        // Validate timestamp is not in the future
+        if (dealRequest.getDealAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new DealValidationException("Deal amount must be greater than zero");
+        }
+        
         if (dealRequest.getDealTimestamp().isAfter(LocalDateTime.now())) {
             throw new DealValidationException("Deal timestamp cannot be in the future");
         }
-        
-        // Additional business validations can be added here
-        logger.debug("Deal request validation passed for deal ID: {}", dealRequest.getDealUniqueId());
     }
     
-    /**
-     * Validate currency code format and existence
-     */
-    private void validateCurrencyCode(String currencyCode) {
+    private void validateCurrency(String currencyCode) {
         if (currencyCode == null || currencyCode.trim().isEmpty()) {
             throw new DealValidationException("Currency code cannot be null or empty");
         }
@@ -178,31 +197,25 @@ public class DealServiceImpl implements DealService {
         }
     }
     
-    /**
-     * Convert DealRequestDTO to Deal entity
-     */
     private Deal convertToEntity(DealRequestDTO dto) {
         return new Deal(
-            dto.getDealUniqueId(),
-            dto.getFromCurrency().toUpperCase(),
-            dto.getToCurrency().toUpperCase(),
-            dto.getDealTimestamp(),
-            dto.getDealAmount()
+                dto.getDealUniqueId(),
+                dto.getFromCurrency(),
+                dto.getToCurrency(),
+                dto.getDealTimestamp(),
+                dto.getDealAmount()
         );
     }
     
-    /**
-     * Convert Deal entity to DealResponseDTO
-     */
     private DealResponseDTO convertToResponseDTO(Deal deal) {
         return new DealResponseDTO(
-            deal.getId(),
-            deal.getDealUniqueId(),
-            deal.getFromCurrency(),
-            deal.getToCurrency(),
-            deal.getDealTimestamp(),
-            deal.getDealAmount(),
-            deal.getCreatedAt()
+                deal.getId(),
+                deal.getDealUniqueId(),
+                deal.getFromCurrency(),
+                deal.getToCurrency(),
+                deal.getDealTimestamp(),
+                deal.getDealAmount(),
+                deal.getCreatedAt()
         );
     }
 } 

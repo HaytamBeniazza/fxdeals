@@ -1,8 +1,5 @@
 package com.progressoft.fxdeals.exception;
 
-/**
- * Exception thrown when attempting to save a deal with a duplicate unique ID
- */
 public class DuplicateDealException extends RuntimeException {
     
     private final String dealUniqueId;
