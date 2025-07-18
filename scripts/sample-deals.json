@@ -1,0 +1,37 @@
+[
+  {
+    "dealUniqueId": "DEAL-USD-EUR-001",
+    "fromCurrency": "USD",
+    "toCurrency": "EUR",
+    "dealTimestamp": "2024-01-15 10:30:00",
+    "dealAmount": 50000.00
+  },
+  {
+    "dealUniqueId": "DEAL-GBP-USD-002",
+    "fromCurrency": "GBP",
+    "toCurrency": "USD",
+    "dealTimestamp": "2024-01-15 11:45:00",
+    "dealAmount": 25000.50
+  },
+  {
+    "dealUniqueId": "DEAL-EUR-JPY-003",
+    "fromCurrency": "EUR",
+    "toCurrency": "JPY",
+    "dealTimestamp": "2024-01-15 14:20:00",
+    "dealAmount": 75000.25
+  },
+  {
+    "dealUniqueId": "DEAL-USD-CHF-004",
+    "fromCurrency": "USD",
+    "toCurrency": "CHF",
+    "dealTimestamp": "2024-01-15 16:15:00",
+    "dealAmount": 30000.75
+  },
+  {
+    "dealUniqueId": "DEAL-CAD-EUR-005",
+    "fromCurrency": "CAD",
+    "toCurrency": "EUR",
+    "dealTimestamp": "2024-01-16 09:00:00",
+    "dealAmount": 40000.00
+  }
+] 
